@@ -1,0 +1,380 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        720
+      ],
+      "id": "5302f896-ada5-4dfc-a35c-e421307ccb6f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://api.twelvedata.com/price",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "XAU/USD"
+            },
+            {
+              "name": "apikey",
+              "value": "ab2bd17cd1fe41ffb37f466b0de35286"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        432
+      ],
+      "id": "c646839e-e3d4-425b-a7bd-b6227cdb0659",
+      "name": "Get Price"
+    },
+    {
+      "parameters": {
+        "url": "https://api.twelvedata.com/ema",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "XAU/USD"
+            },
+            {
+              "name": "interval",
+              "value": "5min"
+            },
+            {
+              "name": "time_period",
+              "value": "20"
+            },
+            {
+              "name": "apikey",
+              "value": "ab2bd17cd1fe41ffb37f466b0de35286"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        624
+      ],
+      "id": "c51c1a19-2e47-441b-89b3-8f9e997a7aa4",
+      "name": "Get EMA20"
+    },
+    {
+      "parameters": {
+        "url": "https://api.twelvedata.com/ema",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "XAU/USD"
+            },
+            {
+              "name": "interval",
+              "value": "5min"
+            },
+            {
+              "name": "time_period",
+              "value": "50"
+            },
+            {
+              "name": "apikey",
+              "value": "ab2bd17cd1fe41ffb37f466b0de35286"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        816
+      ],
+      "id": "d6889551-e753-4428-9ce7-36f0fb800bb2",
+      "name": "Get EMA50"
+    },
+    {
+      "parameters": {
+        "url": "https://api.twelvedata.com/rsi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "symbol",
+              "value": "XAU/USD"
+            },
+            {
+              "name": "interval",
+              "value": "5min"
+            },
+            {
+              "name": "time_period",
+              "value": "14"
+            },
+            {
+              "name": "apikey",
+              "value": "ab2bd17cd1fe41ffb37f466b0de35286"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        1008
+      ],
+      "id": "b7f664eb-b272-4d13-a9f2-2cd5bb14c2a6",
+      "name": "Get RSI"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        80,
+        688
+      ],
+      "id": "945270bc-f3e7-4034-822d-a49a4f3ecb89",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst json = item.json;\n\n// Initialize Lists\nlet price = \"N/A\";\nlet ema20_hist = [];\nlet ema50_hist = [];\nlet rsi_hist = [];\n\n// Grab data from previous nodes in the chain\nconst nodePrice = $('Get Price').first().json;\nconst nodeEma20 = $('Get EMA20').first().json;\nconst nodeEma50 = $('Get EMA50').first().json;\nconst nodeRsi   = $('Get RSI').first().json;\n\n// 1. Current Live Price\nif (nodePrice) price = nodePrice.price;\n\n// 2. EMA 20 History (Last 5 candles)\nif (nodeEma20 && nodeEma20.values) {\n    // Change slice(0,3) to slice(0,5)\n    ema20_hist = nodeEma20.values.slice(0,5).map(v => v.ema);\n}\n\n// 3. EMA 50 History (Last 5 candles)\nif (nodeEma50 && nodeEma50.values) {\n    ema50_hist = nodeEma50.values.slice(0,5).map(v => v.ema);\n}\n\n// 4. RSI History (Last 5 candles)\nif (nodeRsi && nodeRsi.values) {\n    rsi_hist = nodeRsi.values.slice(0,5).map(v => v.rsi);\n}\n\n// Output\nreturn [{\n  json: {\n    market_data: {\n      symbol: \"XAUUSD\",\n      current_price: price,\n      trend_momentum: {\n        ema20_last5: ema20_hist, \n        ema50_last5: ema50_hist,\n        rsi_last5: rsi_hist\n      }\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        720
+      ],
+      "id": "52ad9619-0b55-46db-8bdd-00ec3c585e3f",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "chatId": "7200651359",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1088,
+        720
+      ],
+      "id": "aa4dc8aa-604b-46da-9216-c49d5bd81ba9",
+      "name": "Send a text message",
+      "webhookId": "f3b7832e-3553-4c13-8611-5614c2219bef",
+      "credentials": {
+        "telegramApi": {
+          "id": "UcoW4yrykvHGUru4",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get the input\nconst item = $input.first();\nconst json = item.json;\n\n// --- FIND AI RESPONSE ---\nfunction findAiResponse(obj) {\n  if (!obj) return null;\n  if (typeof obj === 'string' && (obj.includes('\"signal\":') || obj.includes(\"market_notes\"))) return obj;\n  if (typeof obj === 'object') {\n    for (const key in obj) {\n      const result = findAiResponse(obj[key]);\n      if (result) return result;\n    }\n  }\n  return null;\n}\n\nconst rawText = findAiResponse(json);\n\n// Safety fallback\nif (!rawText) return [{ json: { text: \"⚠ Waiting for data...\" } }];\n\n// 2. Clean and Parse\nconst clean = rawText.replace(/json|/g, '').trim();\nlet data;\ntry {\n  data = JSON.parse(clean);\n} catch (e) {\n  // Try to repair simple JSON errors\n  try {\n     const fixed = clean.substring(clean.indexOf('{'), clean.lastIndexOf('}') + 1);\n     data = JSON.parse(fixed);\n  } catch (err2) {\n     return [{ json: { text: \"⚠ JSON Error\" } }];\n  }\n}\n\n// --- THE NEW \"WAIT\" FILTER ---\n// If signal is WAIT, we force the numbers to be dashes\nif (data.signal === \"WAIT\") {\n  data.entry = \"-\";\n  data.stop_loss = \"-\";\n  data.take_profit = \"-\";\n  data.confidence = \"-\"; \n} else {\n  // If BUY/SELL, ensure we have values or fallback to N/A\n  data.entry = data.entry || data.entry_price || \"N/A\";\n  data.stop_loss = data.stop_loss || data.sl || \"N/A\";\n  data.take_profit = data.take_profit || data.tp || \"N/A\";\n}\n\n// 3. Build Final Message\nconst finalMessage = `📊 XAUUSD Signal (5min)\n\nRecommendation: ${data.signal} ${data.signal == 'BUY' ? '🟢' : data.signal == 'SELL' ? '🔴' : '⚪'}\nConfidence: ${data.confidence}\n\nEntry: ${data.entry}\nStop Loss: ${data.stop_loss}\nTake Profit: ${data.take_profit}\n\n📝 Market Notes:\n${data.market_notes || data.analysis || \"No notes.\"}`;\n\nreturn [{ json: { text: finalMessage } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        720
+      ],
+      "id": "bdc7c83b-0e6b-424f-bbb1-9f2eacdd664d",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a Senior Institutional Forex Strategist at a top-tier hedge fund, specializing in XAUUSD (Gold) scalping on the 5-minute timeframe. You do not just look at numbers; you interpret market psychology, momentum, and trap scenarios.\n\nYour goal is to protect capital first, and grow it second. You only signal a trade when the probability is heavily skewed in our favor.\n\n### 🧠 THE DATA YOU SEE\nYou are provided with a 5-candle history (25 minutes) of Price, EMA20, EMA50, and RSI.\n- Arrays are ordered: [Current, T-1, T-2, T-3, T-4]\n- \"Current\" is the live candle. \"T-1\" is the previous closed candle.\n\n### 🛡 YOUR TRADING FRAMEWORK\n\n#### 1. TREND IDENTIFICATION (The \"Flow\")\n- *Bullish Flow:* Price is consistently holding above the EMA20, and EMA20 is above EMA50. The slope of the EMAs should be angling UP.\n- *Bearish Flow:* Price is consistently below the EMA20, and EMA20 is below EMA50. The slope of the EMAs should be angling DOWN.\n- *The \"Wait\" Zone:* If EMA20 and EMA50 are twisting around each other or are perfectly flat horizontal, the market is in consolidation. DO NOT TRADE.\n\n#### 2. MOMENTUM & DIVERGENCE (The \"Secret Sauce\")\n- *RSI Context:*\n    - RSI > 70 is Overbought (Watch for Reversals/Sells).\n    - RSI < 30 is Oversold (Watch for Bounces/Buys).\n    - RSI 45-55 is \"No Man's Land\" (Wait for breakout).\n- *Divergence Logic:*\n    - If Price makes a Higher High (Current > T-4) BUT RSI makes a Lower High -> *STRONG SELL WARNING*.\n    - If Price makes a Lower Low (Current < T-4) BUT RSI makes a Higher Low -> *STRONG BUY WARNING*.\n\n#### 3. EXECUTION TRIGGERS (Select one)\n- *Setup A (Trend Continuation):* The trend is clear. Price pulled back to touch the EMA20 and is now bouncing away from it. RSI is healthy (40-60). -> *ACTION: ENTER*.\n- *Setup B (Breakout):* The market was flat for 3 candles, but the \"Current\" price has suddenly surged away from the EMAs with a sharp change in RSI. -> *ACTION: ENTER (Aggressive)*.\n- *Setup C (Reversal):* Price hit an extreme (RSI > 75 or < 25) and the current price is showing a rejection wick against the trend. -> *ACTION: ENTER (Counter-Trend)*.\n\n### 📉 RISK MANAGEMENT RULES\n- *Stop Loss:* Must be placed beyond the recent swing structure. \n    - For BUY: Below the EMA50 or the recent low. (Approx 20-30 pips).\n    - For SELL: Above the EMA50 or the recent high. (Approx 20-30 pips).\n- *Take Profit:* Aim for a 1:1.5 or 1:2 Risk-Reward Ratio. (Approx 40-60 pips).\n\n### 📝 OUTPUT FORMAT\nYou must respond in strictly valid JSON. Do not include markdown ticks.\n{\n  \"signal\": \"BUY\" | \"SELL\" | \"WAIT\",\n  \"confidence\": \"High\" (Perfect Setup) | \"Medium\" (Good Setup) | \"Low\" (Risky),\n  \"entry\": \"Current Price\",\n  \"stop_loss\": \"Exact Price\",\n  \"take_profit\": \"Exact Price\",\n  \"market_notes\": \"Write a professional paragraph. Analyze the EMA slope, RSI divergence, and candlestick sentiment. Explain WHY you are taking this specific trade or why you are waiting.\"\n}"
+            },
+            {
+              "content": "=Analyze this 5-candle market sequence:\n{{ JSON.stringify($json.market_data) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        512,
+        720
+      ],
+      "id": "bfa25660-2f91-43f9-94b6-d243a65ea7b9",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "PX10tL3QMsXmQbtG",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Price",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get EMA20",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get EMA50",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get RSI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Price": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get EMA20": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get EMA50": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Get RSI": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9f4e8aa9-a4c8-4fea-9869-60ffbe7df638",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ae952798211c2f719d09bc7157f528db4814d5abdc631269474e6620a6a0597d"
+  },
+  "id": "nVOFJmUiaPdyGaMR",
+  "tags": []
+}
